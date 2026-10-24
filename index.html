@@ -1,0 +1,192 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mon espace admin</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 30px 16px;
+      font-family: Arial, sans-serif;
+      background: #101827;
+      color: #f1f5f9;
+    }
+
+    main {
+      max-width: 480px;
+      margin: 30px auto;
+    }
+
+    section {
+      background: #1e293b;
+      padding: 24px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin: 16px 0 7px;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    input, textarea {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: white;
+    }
+
+    button {
+      margin-top: 16px;
+      border: 0;
+      background: #38bdf8;
+      color: #082f49;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .status {
+      overflow-wrap: anywhere;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <h1>Mon espace</h1>
+
+  <section>
+    <h2>Envoyer une demande</h2>
+
+    <form id="requestForm">
+      <label for="name">Nom</label>
+      <input id="name" name="name" maxlength="100"
+             autocomplete="name" required>
+
+      <label for="email">Adresse e-mail</label>
+      <input id="email" name="email" type="email"
+             maxlength="254" autocomplete="email" required>
+
+      <label for="message">Ta demande</label>
+      <textarea id="message" name="message"
+                maxlength="5000" rows="5" required></textarea>
+
+      <button type="submit">Envoyer la demande</button>
+      <p id="requestStatus" class="status" role="status"></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>Administration</h2>
+
+    <form id="adminForm">
+      <label for="password">Mot de passe administrateur</label>
+      <input id="password" name="password" type="password"
+             autocomplete="current-password" required>
+
+      <button type="submit">Se connecter</button>
+      <p id="adminStatus" class="status" role="status"></p>
+    </form>
+  </section>
+</main>
+
+<script>
+  // À remplacer par l'adresse HTTPS de ton backend
+  // lorsque celui-ci sera accessible depuis Internet.
+  const API_URL = "http://127.0.0.1:5000";
+
+  async function sendRequest(path, data) {
+    const response = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || "La demande a échoué.");
+    }
+
+    return result;
+  }
+
+  document.getElementById("requestForm")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const form = event.currentTarget;
+      const status = document.getElementById("requestStatus");
+      const button = form.querySelector("button");
+
+      button.disabled = true;
+      status.textContent = "Envoi en cours...";
+
+      try {
+        const data = Object.fromEntries(new FormData(form));
+
+        await sendRequest("/api/demande", data);
+
+        status.textContent = "Demande envoyée.";
+        form.reset();
+      } catch (error) {
+        status.textContent =
+          "Erreur : " + error.message +
+          " Vérifie que le backend est démarré.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+  document.getElementById("adminForm")
+    .addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const form = event.currentTarget;
+      const status = document.getElementById("adminStatus");
+      const button = form.querySelector("button");
+      const password = document.getElementById("password").value;
+
+      button.disabled = true;
+      status.textContent = "Vérification en cours...";
+
+      try {
+        const result = await sendRequest("/api/admin", { password });
+
+        status.textContent = result.message || "Connexion réussie.";
+        form.reset();
+      } catch (error) {
+        status.textContent =
+          "Connexion impossible : " + error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+</script>
+</body>
+</html>
